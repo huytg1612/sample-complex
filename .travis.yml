@@ -1,0 +1,36 @@
+sudo: required
+language: generic
+
+services:
+  - docker
+
+before_install:
+  - docker build -t huytg1999/sample-react-test -f ./client/Dockerfile.dev ./client
+
+script:
+  - docker run -e CI=true huytg1999/sample-react-test npm test
+
+after_success:
+  - docker build -t huytg1999/sample-multi-client ./client
+  - docker build -t huytg1999/sample-multi-nginx ./nginx
+  - docker build -t huytg1999/sample-multi-server ./server
+  - docker build -t huytg1999/sample-multi-worker ./worker
+  # Log in to the docker CLI
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
+  # Take those images and push them to docker hub
+  - docker push huytg1999/sample-multi-client
+  - docker push huytg1999/sample-multi-nginx
+  - docker push huytg1999/sample-multi-server
+  - docker push huytg1999/sample-multi-worker
+
+deploy:
+  provider: elasticbeanstalk
+  region: "us-east-1"
+  app: "multi-docker"
+  env: "Multi-docker-env"
+  bucket_name: "elasticbeanstalk-us-east-1-560176329885"
+  bucket_path: "docker-multi"
+  access_key_id: $AWS_ACCESS_KEY
+  secret_access_key: $AWS_SECRET_KEY
+  on:
+    branch: master
